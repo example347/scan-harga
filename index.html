@@ -1,37 +1,19 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8">
   <title>Scan Harga Barang</title>
   <script src="https://unpkg.com/html5-qrcode"></script>
-
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      text-align: center;
-      padding: 20px;
-    }
-    #reader {
-      width: 300px;
-      margin: auto;
-      margin-top: 20px;
-    }
-    #result {
-      margin-top: 20px;
-      font-size: 20px;
-      font-weight: bold;
-    }
+    body { font-family: Arial; padding: 20px; }
+    #reader { width: 300px; margin-bottom: 20px; }
   </style>
 </head>
 
 <body>
-
-  <h2>Scanner Harga Barang</h2>
-  <p>Point kamera ke barcode produk</p>
+  <h2>Scan Harga Barang</h2>
 
   <div id="reader"></div>
-
-  <div id="result">Hasil scan muncul di sini...</div>
+  <div id="result" style="font-size:18px;font-weight:bold;"></div>
 
   <script>
     // ==========================
@@ -43,4 +25,44 @@
         harga: 75000
       },
       "8991234567890": {
-        nama: "Conto
+        nama: "Contoh Produk 1",
+        harga: 25000
+      },
+      "1234567890123": {
+        nama: "Contoh Produk 2",
+        harga: 40000
+      }
+    };
+
+    // ==========================
+    // FUNGSI SCAN
+    // ==========================
+    function onScanSuccess(decodedText) {
+      const result = document.getElementById("result");
+
+      if (db[decodedText]) {
+        result.innerHTML =
+          "Barcode: " + decodedText +
+          "<br>Nama: " + db[decodedText].nama +
+          "<br>Harga: Rp " + db[decodedText].harga.toLocaleString();
+      } else {
+        result.innerHTML = "Produk tidak ditemukan: " + decodedText;
+      }
+    }
+
+    // ==========================
+    // START KAMERA
+    // ==========================
+    const html5QrCode = new Html5Qrcode("reader");
+
+    html5QrCode.start(
+      { facingMode: "environment" },
+      {
+        fps: 10,
+        qrbox: { width: 250, height: 120 } // cocok untuk barcode panjang
+      },
+      onScanSuccess
+    );
+  </script>
+</body>
+</html>
