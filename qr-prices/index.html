@@ -1,1 +1,41 @@
 
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Scan Harga Barang</title>
+  <script src="https://unpkg.com/html5-qrcode"></script>
+</head>
+
+<body>
+  <h2>Scan Barcode Produk</h2>
+  <div id="reader" style="width:300px;"></div>
+  <h3>Hasil:</h3>
+  <div id="result"></div>
+
+  <script>
+    const db = {
+      "899123456": { nama: "Shampoo X", harga: 25000 },
+      "123456789": { nama: "Body Lotion", harga: 40000 }
+    };
+
+    function onScanSuccess(decodedText) {
+      let resultArea = document.getElementById("result");
+
+      if (db[decodedText]) {
+        resultArea.innerHTML =
+          "<b>" + db[decodedText].nama + "</b><br>Harga: Rp " +
+          db[decodedText].harga.toLocaleString();
+      } else {
+        resultArea.innerHTML = "Produk tidak ditemukan";
+      }
+    }
+
+    const html5QrCode = new Html5Qrcode("reader");
+    html5QrCode.start(
+      { facingMode: "environment" },
+      { fps: 10, qrbox: 250 },
+      onScanSuccess
+    );
+  </script>
+</body>
+</html>
