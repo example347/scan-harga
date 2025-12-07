@@ -1,85 +1,300 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Scanner Harga Produk</title>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Scanner Harga Produk (EAN-13)</title>
 
+  <!-- html5-qrcode -->
   <script src="https://unpkg.com/html5-qrcode"></script>
 
+  <!-- Simple modern styling -->
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      padding: 20px;
-      background: #f2f2f2;
-      text-align: center;
+    :root{
+      --bg:#f6f8fb; --card:#fff; --accent:#6c63ff; --muted:#666;
     }
-    #reader {
-      width: 300px;
-      margin: auto;
+    body{
+      margin:0; font-family:Inter, Arial, sans-serif; background:var(--bg); color:#222;
+      -webkit-font-smoothing:antialiased;
     }
-    #result {
-      margin-top: 20px;
-      padding: 15px;
-      background: white;
-      border-radius: 8px;
-      font-size: 18px;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    header{ padding:20px; text-align:center;}
+    h1{ margin:0; font-size:20px; }
+    p.lead{ margin:6px 0 0; color:var(--muted); font-size:14px; }
+
+    .layout{
+      max-width:980px; margin:14px auto; padding:16px;
+      display:grid; grid-template-columns: 1fr 360px; gap:18px;
+    }
+
+    /* left: scanner & output */
+    .scanner-card, .db-card{
+      background:var(--card); border-radius:12px; padding:14px; box-shadow:0 6px 18px rgba(25,25,40,0.06);
+    }
+
+    #reader{ width:100%; max-width:520px; margin:0 auto; border-radius:8px; overflow:hidden; }
+
+    #result{
+      margin-top:12px; padding:12px; background:#fbfbff; border-radius:8px; min-height:80px;
+      display:flex; align-items:center; justify-content:center; text-align:center;
+    }
+
+    /* right: database & controls */
+    .controls { display:flex; gap:8px; margin-bottom:10px; }
+    .btn{
+      padding:8px 10px; border-radius:8px; border:0; cursor:pointer; background:var(--accent); color:#fff; font-weight:600;
+    }
+    .btn.ghost{ background:transparent; color:var(--accent); border:1px solid rgba(108,99,255,0.12); }
+
+    .product-list{ margin-top:8px; display:flex; flex-direction:column; gap:8px; max-height:420px; overflow:auto; }
+
+    .product{
+      background:#fff; border-radius:8px; padding:10px; display:flex; justify-content:space-between; align-items:center;
+      box-shadow:0 4px 10px rgba(15,15,40,0.03);
+    }
+    .product .meta{ text-align:left; }
+    .small{ font-size:13px; color:var(--muted); }
+    .price{ font-weight:700; color:#111; }
+
+    footer{ text-align:center; margin:22px 0 40px; color:var(--muted); font-size:13px;}
+    @media (max-width:900px){
+      .layout{ grid-template-columns: 1fr; padding:12px; }
+      #reader{ max-width:100%; }
     }
   </style>
 </head>
-
 <body>
-  <h2>Scan Barcode Produk</h2>
-  <div id="reader"></div>
+  <header>
+    <h1>Scanner Harga Produk (EAN-13)</h1>
+    <p class="lead">Arahkan kamera ke barcode produk — data diambil dari Google Sheets / CSV</p>
+  </header>
 
-  <div id="result">Arahkan kamera ke barcode...</div>
+  <main class="layout">
+    <!-- SCANNER -->
+    <section class="scanner-card">
+      <div id="reader"></div>
+
+      <div id="result">Arahkan kamera ke barcode — hasil akan tampil di sini.</div>
+
+      <div style="margin-top:12px; display:flex; gap:8px; justify-content:center;">
+        <button id="stopBtn" class="btn ghost">Stop Kamera</button>
+        <button id="startBtn" class="btn">Start Kamera</button>
+      </div>
+    </section>
+
+    <!-- DATABASE & CONTROLS -->
+    <aside class="db-card">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div style="font-weight:700">Database Produk</div>
+        <div class="small" id="lastUpdated">—</div>
+      </div>
+
+      <div class="controls" style="margin-top:10px;">
+        <button id="refreshDb" class="btn ghost">Refresh Sekarang</button>
+        <button id="openSheet" class="btn">Buka Google Sheet</button>
+      </div>
+
+      <div style="font-size:13px; color:var(--muted); margin-bottom:8px;">
+        Data diambil dari Google Sheets (atau URL CSV). Otomatis refresh tiap <span id="intervalDisplay">30</span>s.
+      </div>
+
+      <div class="product-list" id="productList">
+        <!-- list produk singkat -->
+      </div>
+    </aside>
+  </main>
+
+  <footer>
+    Dibuat untuk GitHub Pages • Mendukung EAN-13 • Edit Google Sheets untuk update harga otomatis
+  </footer>
 
   <script>
-    // ============================
-    // Database Produk EAN-13
-    // ============================
-    const db = {
-      "8991234567890": { nama: "Shampoo X", harga: 25000 },
-      "8993417307218": { nama: "Moisturizer Y", harga: 45000 },
-      "1234567890128": { nama: "Body Lotion", harga: 40000 }
-    };
+    // =========================
+    // KONFIGURASI (ganti sesuai)
+    // =========================
+    // 1) Jika Anda memakai Google Sheets → masukkan URL CSV publik di bawah ini
+    //    Dapatkan dari: File → Share → Publish to web → CSV
+    // Contoh: 
+    // https://docs.google.com/spreadsheets/d/e/AAA.../pub?gid=0&single=true&output=csv
+    const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/PASTE_ID_ANDA_HERE/pub?gid=0&single=true&output=csv";
 
-    // ============================
-    // Fungsi ketika barcode terbaca
-    // ============================
-    function onScanSuccess(decodedText) {
-      const result = document.getElementById("result");
+    // 2) Interval refresh DB (dalam detik)
+    const REFRESH_INTERVAL_SEC = 30;
 
-      // EAN-13 hanya angka & panjang 13
-      const code = decodedText.trim();
+    // =========================
+    // internal state
+    // =========================
+    let db = {}; // mapping barcode -> {nama, harga}
+    let lastFetched = null;
+    let autoRefreshTimer = null;
 
-      if (/^\d{13}$/.test(code)) {
-        if (db[code]) {
-          result.innerHTML =
-            "<b>Nama Produk:</b> " + db[code].nama +
-            "<br><b>Harga:</b> Rp " + db[code].harga.toLocaleString();
-        } else {
-          result.innerHTML = "Produk tidak ditemukan di database:<br><b>" + code + "</b>";
-        }
-      } else {
-        result.innerHTML = "Kode terbaca tetapi bukan format EAN-13:<br><b>" + code + "</b>";
+    // =========================
+    // utility: format harga
+    // =========================
+    function formatRp(num){
+      try{
+        return Number(num).toLocaleString("id-ID");
+      }catch(e){ return num; }
+    }
+
+    // =========================
+    // fetch CSV, parse dan load ke db
+    // =========================
+    async function fetchAndLoadCsv(){
+      if(!SHEET_CSV_URL || SHEET_CSV_URL.includes("PASTE_ID")) {
+        console.warn("SHEET_CSV_URL belum diisi.");
+        document.getElementById("lastUpdated").innerText = "Sheet URL belum diset.";
+        return;
+      }
+      try{
+        const res = await fetch(SHEET_CSV_URL, { cache: "no-store" });
+        if(!res.ok) throw new Error("Gagal fetch CSV: " + res.status);
+        const csvText = await res.text();
+        parseCsvToDb(csvText);
+        lastFetched = new Date();
+        document.getElementById("lastUpdated").innerText = "Terakhir: " + lastFetched.toLocaleTimeString();
+        renderProductList();
+      }catch(err){
+        console.error(err);
+        document.getElementById("lastUpdated").innerText = "Gagal fetch data";
       }
     }
 
-    // ============================
-    // Mulai kamera & scanner
-    // ============================
-    const html5QrCode = new Html5Qrcode("reader");
+    // very simple CSV parser (assumes header: barcode,nama,harga)
+    function parseCsvToDb(csvText){
+      const lines = csvText.trim().split(/\r?\n/).filter(l=>l.trim().length>0);
+      if(lines.length <= 1) { db = {}; return; }
+      const headers = lines[0].split(",").map(h=>h.trim().toLowerCase());
+      const idxBarcode = headers.indexOf("barcode");
+      const idxNama = headers.indexOf("nama");
+      const idxHarga = headers.indexOf("harga");
+      if(idxBarcode < 0) {
+        console.warn("CSV header tidak ada kolom 'barcode'. Pastikan header: barcode,nama,harga");
+        return;
+      }
+      const newDb = {};
+      for(let i=1;i<lines.length;i++){
+        // split only on commas — jika nama mengandung koma, sheet harus export tanpa koma, atau gunakan delimiter lain
+        const cols = lines[i].split(",").map(c=>c.trim());
+        const code = cols[idxBarcode] ? cols[idxBarcode].replace(/["']/g,"").trim() : "";
+        if(!code) continue;
+        const nama = (idxNama>=0 && cols[idxNama]) ? cols[idxNama].replace(/["']/g,"").trim() : "";
+        const harga = (idxHarga>=0 && cols[idxHarga]) ? cols[idxHarga].replace(/["']/g,"").trim() : "";
+        newDb[code] = { nama: nama || "-", harga: harga || "0" };
+      }
+      db = newDb;
+    }
 
-    html5QrCode.start(
-      { facingMode: "environment" }, // kamera belakang
-      {
-        fps: 10,
-        qrbox: { width: 250, height: 100 } // ukuran cocok untuk barcode EAN-13 (landscape)
-      },
-      onScanSuccess
-    );
+    // render product list (sidebar)
+    function renderProductList(){
+      const el = document.getElementById("productList");
+      el.innerHTML = "";
+      const keys = Object.keys(db);
+      if(keys.length === 0){
+        el.innerHTML = '<div class="small" style="color:var(--muted)">Database kosong.</div>';
+        return;
+      }
+      // show latest 40 items
+      const show = keys.slice(0, 200);
+      show.forEach(code=>{
+        const p = db[code];
+        const item = document.createElement("div");
+        item.className = "product";
+        item.innerHTML = `<div class="meta"><div style="font-weight:600">${p.nama}</div><div class="small">Barcode: ${code}</div></div><div class="price">Rp ${formatRp(p.harga)}</div>`;
+        el.appendChild(item);
+      });
+    }
+
+    // =========================
+    // scanner behavior
+    // =========================
+    const resultEl = document.getElementById("result");
+    let html5QrCode = null;
+    let cameraRunning = false;
+
+    function showResult(text, found){
+      if(found){
+        resultEl.innerHTML = `<div><div style="font-weight:700; font-size:16px;">${found.nama}</div><div style="margin-top:6px;">Rp ${formatRp(found.harga)}</div><div class="small" style="margin-top:6px;">Barcode: ${text}</div></div>`;
+      } else {
+        resultEl.innerHTML = `<div style="color:#b00">Produk tidak ditemukan: <b>${text}</b></div>`;
+      }
+    }
+
+    async function startCamera(){
+      if(cameraRunning) return;
+      const readerId = "reader";
+      html5QrCode = new Html5Qrcode(readerId, /* verbose= */ false);
+      try{
+        await html5QrCode.start(
+          { facingMode: "environment" },
+          { fps: 10, qrbox: { width: 280, height: 90 } },
+          (decodedText, decodedResult) => {
+            // EAN-13 biasanya 13 digit angka
+            const code = decodedText.trim();
+            if(/^\d{13}$/.test(code)){
+              showResult(code, db[code] || null);
+            } else {
+              // sometimes scanners return with spaces or line breaks; normalize
+              const digits = code.replace(/\D/g,"");
+              if(/^\d{13}$/.test(digits)){
+                showResult(digits, db[digits] || null);
+              } else {
+                resultEl.innerHTML = `Terbaca: ${code} (bukan EAN-13)`;
+              }
+            }
+          },
+          (errorMessage) => {
+            // ignore non-fatal scan errors
+          }
+        );
+        cameraRunning = true;
+      }catch(err){
+        console.error("Gagal start kamera:", err);
+        resultEl.innerHTML = "Gagal mengaktifkan kamera. Izinkan akses kamera di browser.";
+      }
+    }
+
+    async function stopCamera(){
+      if(html5QrCode && cameraRunning){
+        await html5QrCode.stop();
+        await html5QrCode.clear();
+        cameraRunning = false;
+      }
+    }
+
+    // =========================
+    // controls
+    // =========================
+    document.getElementById("refreshDb").addEventListener("click", fetchAndLoadCsv);
+    document.getElementById("openSheet").addEventListener("click", ()=>{
+      if(!SHEET_CSV_URL || SHEET_CSV_URL.includes("PASTE_ID")) {
+        alert("Masukkan URL Google Sheets publik di variabel SHEET_CSV_URL pada script.");
+        return;
+      }
+      window.open(SHEET_CSV_URL.replace(/\/pub\?.*$/,""), "_blank");
+    });
+    document.getElementById("stopBtn").addEventListener("click", stopCamera);
+    document.getElementById("startBtn").addEventListener("click", startCamera);
+
+    // =========================
+    // auto refresh DB
+    // =========================
+    function startAutoRefresh(){
+      clearInterval(autoRefreshTimer);
+      autoRefreshTimer = setInterval(fetchAndLoadCsv, REFRESH_INTERVAL_SEC * 1000);
+      document.getElementById("intervalDisplay").innerText = REFRESH_INTERVAL_SEC;
+    }
+
+    // =========================
+    // startup
+    // =========================
+    (async function init(){
+      // load DB once
+      await fetchAndLoadCsv();
+      // start camera automatically (attempt)
+      await startCamera();
+      // start auto refresh
+      startAutoRefresh();
+    })();
   </script>
 </body>
 </html>
