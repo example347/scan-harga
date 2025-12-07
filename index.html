@@ -1,65 +1,82 @@
 <!DOCTYPE html>
-<html>
+<html lang="id">
 <head>
-  <title>Scan Harga Barang</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Scanner Harga Produk</title>
+
   <script src="https://unpkg.com/html5-qrcode"></script>
+
   <style>
-    body { font-family: Arial; padding: 20px; }
-    #reader { width: 300px; margin-bottom: 20px; }
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      background: #f2f2f2;
+      text-align: center;
+    }
+    #reader {
+      width: 300px;
+      margin: auto;
+    }
+    #result {
+      margin-top: 20px;
+      padding: 15px;
+      background: white;
+      border-radius: 8px;
+      font-size: 18px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    }
   </style>
 </head>
 
 <body>
-  <h2>Scan Harga Barang</h2>
-
+  <h2>Scan Barcode Produk</h2>
   <div id="reader"></div>
-  <div id="result" style="font-size:18px;font-weight:bold;"></div>
+
+  <div id="result">Arahkan kamera ke barcode...</div>
 
   <script>
-    // ==========================
-    // DATABASE PRODUK ANDA
-    // ==========================
+    // ============================
+    // Database Produk EAN-13
+    // ============================
     const db = {
-      "8993417307218": {
-        nama: "Produk di Foto (sesuaikan nama)",
-        harga: 75000
-      },
-      "8991234567890": {
-        nama: "Contoh Produk 1",
-        harga: 25000
-      },
-      "1234567890123": {
-        nama: "Contoh Produk 2",
-        harga: 40000
-      }
+      "8991234567890": { nama: "Shampoo X", harga: 25000 },
+      "8993417307218": { nama: "Moisturizer Y", harga: 45000 },
+      "1234567890128": { nama: "Body Lotion", harga: 40000 }
     };
 
-    // ==========================
-    // FUNGSI SCAN
-    // ==========================
+    // ============================
+    // Fungsi ketika barcode terbaca
+    // ============================
     function onScanSuccess(decodedText) {
       const result = document.getElementById("result");
 
-      if (db[decodedText]) {
-        result.innerHTML =
-          "Barcode: " + decodedText +
-          "<br>Nama: " + db[decodedText].nama +
-          "<br>Harga: Rp " + db[decodedText].harga.toLocaleString();
+      // EAN-13 hanya angka & panjang 13
+      const code = decodedText.trim();
+
+      if (/^\d{13}$/.test(code)) {
+        if (db[code]) {
+          result.innerHTML =
+            "<b>Nama Produk:</b> " + db[code].nama +
+            "<br><b>Harga:</b> Rp " + db[code].harga.toLocaleString();
+        } else {
+          result.innerHTML = "Produk tidak ditemukan di database:<br><b>" + code + "</b>";
+        }
       } else {
-        result.innerHTML = "Produk tidak ditemukan: " + decodedText;
+        result.innerHTML = "Kode terbaca tetapi bukan format EAN-13:<br><b>" + code + "</b>";
       }
     }
 
-    // ==========================
-    // START KAMERA
-    // ==========================
+    // ============================
+    // Mulai kamera & scanner
+    // ============================
     const html5QrCode = new Html5Qrcode("reader");
 
     html5QrCode.start(
-      { facingMode: "environment" },
+      { facingMode: "environment" }, // kamera belakang
       {
         fps: 10,
-        qrbox: { width: 250, height: 120 } // cocok untuk barcode panjang
+        qrbox: { width: 250, height: 100 } // ukuran cocok untuk barcode EAN-13 (landscape)
       },
       onScanSuccess
     );
