@@ -296,5 +296,48 @@
       startAutoRefresh();
     })();
   </script>
+  <script>
+async function loadData() {
+  const url = "https://raw.githubusercontent.com/username/repo/main/produk.csv";
+  const response = await fetch(url);
+  const text = await response.text();
+
+  const rows = text.split("\n").map(r => r.split(","));
+  const header = rows.shift(); 
+
+  const db = {};
+  rows.forEach(row => {
+    const kode = row[0].trim();
+    const nama = row[1].trim();
+    const harga = parseInt(row[2].trim().replace(/\D/g, "")) || 0;
+
+    db[kode] = { nama, harga };
+  });
+
+  return db;
+}
+</script>
+<script>
+let database = {};
+
+loadData().then(db => {
+  database = db;
+  console.log("Database siap:", db);
+});
+
+function onScanSuccess(code) {
+  const result = document.getElementById("result");
+
+  if (database[code]) {
+    result.innerHTML = `
+      <b>${database[code].nama}</b><br>
+      Harga: Rp ${database[code].harga.toLocaleString()}
+    `;
+  } else {
+    result.innerHTML = "Produk tidak ditemukan: " + code;
+  }
+}
+</script>
+
 </body>
 </html>
