@@ -1,44 +1,46 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <meta charset="UTF-8">
   <title>Scan Harga Barang</title>
   <script src="https://unpkg.com/html5-qrcode"></script>
+
   <style>
-    body { font-family: Arial; padding: 20px; }
-    #reader { width: 300px; margin-bottom: 20px; }
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 20px;
+    }
+    #reader {
+      width: 300px;
+      margin: auto;
+      margin-top: 20px;
+    }
+    #result {
+      margin-top: 20px;
+      font-size: 20px;
+      font-weight: bold;
+    }
   </style>
 </head>
 
 <body>
-  <h2>Scan Harga Barang</h2>
+
+  <h2>Scanner Harga Barang</h2>
+  <p>Point kamera ke barcode produk</p>
 
   <div id="reader"></div>
-  <div id="result" style="font-size:18px;font-weight:bold;"></div>
+
+  <div id="result">Hasil scan muncul di sini...</div>
 
   <script>
+    // ==========================
+    // DATABASE PRODUK ANDA
+    // ==========================
     const db = {
-      "8993417307218": { nama: "ELIPS VITAMIN HSIR MIST", harga: 25000 },
-      "8990000010002": { nama: "Body Lotion", harga: 40000 }
-    };
-
-    function onScanSuccess(code) {
-      const result = document.getElementById("result");
-
-      if (db[code]) {
-        result.innerHTML =
-          "Nama: " + db[code].nama +
-          "<br>Harga: Rp " + db[code].harga.toLocaleString();
-      } else {
-        result.innerHTML = "Produk tidak ditemukan: " + code;
-      }
-    }
-
-    const qr = new Html5Qrcode("reader");
-    qr.start(
-      { facingMode: "environment" },
-      { fps: 10, qrbox: 250 },
-      onScanSuccess
-    );
-  </script>
-</body>
-</html>
+      "8993417307218": {
+        nama: "Produk di Foto (sesuaikan nama)",
+        harga: 75000
+      },
+      "8991234567890": {
+        nama: "Conto
